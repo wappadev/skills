@@ -252,6 +252,8 @@ async function main() {
   }
 
   console.log(`\n${count} görsel üretildi → ${OUT}`);
-  console.log('Sırada: node place-screenshots.js --from ' + path.relative(process.cwd(), OUT) + ' --locale <loc> --project . --patch-config');
+  // Dosya adları locale önekli üretildi → place-screenshots.js dili otomatik saptar;
+  // tüm diller için TEK çağrı yeter (dile göre tekrar çağırma).
+  console.log('Sırada: node place-screenshots.js --from ' + path.relative(process.cwd(), OUT) + ' --project . --patch-config');
 }
 main().catch((e) => { console.error(e); process.exit(1); });

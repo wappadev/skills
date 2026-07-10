@@ -13,13 +13,19 @@
  *   1024×500   → Android feature  → fastlane/metadata/android/<androidLocale>/images/featureGraphic.png
  *   512×512    → Android ikon     → fastlane/metadata/android/<androidLocale>/images/icon.png
  *
+ * ÇOK DİLLİ: build-screenshots.js çıktısı locale'i dosya adına gömdüğü için
+ * (ör. en-US_android_01.png, tr_feature.png), bu betik her kareyi adından saptayıp
+ * DOĞRU dile yerleştirir. Yani TÜM diller için TEK çağrı yeter — --locale'i dile göre
+ * tekrar tekrar çağırmaya GEREK YOK (aksi eski davranış, hepsini tek dile yığıp Play'in
+ * "dil başına 8 görsel" limitini aşıyordu). --locale yalnızca önekisiz export'ta yedektir.
+ *
  * Kullanım:
- *   node place-screenshots.js --from ./export --locale tr [--project .] \
- *        [--ios-locale tr] [--android-locale tr-TR] \
- *        [--resize] [--patch-config] [--dry-run]
+ *   node place-screenshots.js --from ./export --project . [--patch-config] [--resize] [--dry-run]
+ *   # önekisiz (eski editör) export için dili elle ver:
+ *   node place-screenshots.js --from ./export --locale tr [--ios-locale tr] [--android-locale tr-TR]
  *
  *   --from           Dışa aktarılan PNG'lerin klasörü (ZIP'i açtığın yer). ZORUNLU.
- *   --locale         Kısayol: hem iOS hem Android locale'ini türetir (tr→ios tr / android tr-TR).
+ *   --locale         Yedek: dosya adında locale yoksa hem iOS hem Android locale'ini türetir.
  *   --ios-locale     iOS locale (store.config.json anahtarı ile aynı: tr, en-US ...). --locale'i ezer.
  *   --android-locale Android locale (Play tam kodu: tr-TR, en-US ...). --locale'i ezer.
  *   --project        Proje kökü (varsayılan: bulunduğun dizin).
@@ -95,14 +101,29 @@ function loadSharp() {
 const sharp = loadSharp();
 
 // ---------- hedef tanımları ----------
-// tol: en-boy oranı korunacak; ufak (±%1) sapmalara izin ver, tam eşleşmede resize'a gerek yok.
+// Hedef klasörler locale-parametrik: aynı export içindeki farklı diller doğru klasöre gider.
+const DEVICE_KEYS = ['iphone67', 'ipad13', 'android', 'feature', 'icon'];
+const iosDir = (ios, sub) => path.join(PROJECT, 'store', 'apple', 'screenshot', ios, sub);
+const andImg = (and) => path.join(PROJECT, 'fastlane', 'metadata', 'android', and, 'images');
+
 const TARGETS = [
-  { key: 'iphone67',  w: 1290, h: 2796, kind: 'ios-set',  dir: () => path.join(PROJECT, 'store', 'apple', 'screenshot', IOS_LOCALE, 'APP_IPHONE_67') },
-  { key: 'ipad13',    w: 2064, h: 2752, kind: 'ios-set',  dir: () => path.join(PROJECT, 'store', 'apple', 'screenshot', IOS_LOCALE, 'APP_IPAD_PRO_3GEN_129') },
-  { key: 'android',   w: 1080, h: 1920, kind: 'and-set',  dir: () => path.join(PROJECT, 'fastlane', 'metadata', 'android', ANDROID_LOCALE, 'images', 'phoneScreenshots') },
-  { key: 'feature',   w: 1024, h: 500,  kind: 'and-file', file: () => path.join(PROJECT, 'fastlane', 'metadata', 'android', ANDROID_LOCALE, 'images', 'featureGraphic.png') },
-  { key: 'icon',      w: 512,  h: 512,  kind: 'and-file', file: () => path.join(PROJECT, 'fastlane', 'metadata', 'android', ANDROID_LOCALE, 'images', 'icon.png') },
+  { key: 'iphone67', w: 1290, h: 2796, kind: 'ios-set',  dir: (ios) => iosDir(ios, 'APP_IPHONE_67') },
+  { key: 'ipad13',   w: 2064, h: 2752, kind: 'ios-set',  dir: (ios) => iosDir(ios, 'APP_IPAD_PRO_3GEN_129') },
+  { key: 'android',  w: 1080, h: 1920, kind: 'and-set',  dir: (ios, and) => path.join(andImg(and), 'phoneScreenshots') },
+  { key: 'feature',  w: 1024, h: 500,  kind: 'and-file', file: (ios, and) => path.join(andImg(and), 'featureGraphic.png') },
+  { key: 'icon',     w: 512,  h: 512,  kind: 'and-file', file: (ios, and) => path.join(andImg(and), 'icon.png') },
 ];
+
+// build-screenshots.js çıktısı locale'i dosya adına gömer:
+//   "<loc>_<device>_<nn>.png"  ve  "<loc>_feature.png"   (ör. en-US_android_01.png)
+// İlk cihaz belirtecinden ÖNCEki kısım locale'dir; böylece ÇOK DİLLİ export'ta her kare
+// DOĞRU dile yönlendirilir. (Aksi halde hepsi tek klasöre yığılır → Play "8 görselden fazla"
+// hatası.) Locale saptanamazsa (önekisiz eski editör export'u) --locale bayrağına düşülür.
+function detectLocale(filename) {
+  const parts = path.parse(filename).name.split('_');
+  const di = parts.findIndex((p) => DEVICE_KEYS.includes(p));
+  return di > 0 ? parts.slice(0, di).join('_') : null;
+}
 
 // Bir görüntü boyutunu en yakın hedefe eşle (en-boy oranına göre, ±%3 tolerans).
 function matchTarget(w, h) {
@@ -127,8 +148,8 @@ async function main() {
   console.log(`iOS locale: ${IOS_LOCALE}   Android locale: ${ANDROID_LOCALE}`);
   console.log(`Kaynak: ${FROM}  (${files.length} PNG)${DRY ? '   [DRY-RUN]' : ''}\n`);
 
-  const counters = {};   // hedef key başına sıra numarası
-  const placed = { iphone67: [], ipad13: [], android: [], feature: [], icon: [] };
+  const counters = {};   // "<loc>:<key>" başına sıra numarası (dile göre 01'den başlar)
+  const placed = [];     // { key, dest, iosLocale, androidLocale, loc }
   const skipped = [];
 
   for (const f of files) {
@@ -140,20 +161,27 @@ async function main() {
       continue;
     }
 
+    // Dosya adından locale'i sapta; yoksa bayraklardan gelen varsayılana düş.
+    const loc = detectLocale(f);
+    const iosLocale = loc || IOS_LOCALE;
+    const androidLocale = loc ? (LOCALE_MAP[loc] || loc) : ANDROID_LOCALE;
+
     const exact = meta.width === target.w && meta.height === target.h;
     let dest;
     if (target.kind === 'and-file') {
-      dest = target.file();
+      dest = target.file(iosLocale, androidLocale);
     } else {
-      counters[target.key] = (counters[target.key] || 0) + 1;
-      const nn = String(counters[target.key]).padStart(2, '0');
-      const base = target.kind === 'and-set' ? `${nn}_${path.parse(f).name}.png` : `${nn}.png`;
-      dest = path.join(target.dir(), base);
+      const ck = `${loc || '_'}:${target.key}`;
+      counters[ck] = (counters[ck] || 0) + 1;
+      const nn = String(counters[ck]).padStart(2, '0');
+      const dir = target.kind === 'and-set' ? target.dir(iosLocale, androidLocale) : target.dir(iosLocale);
+      dest = path.join(dir, `${nn}.png`);
     }
 
+    const locTag = loc ? `[${loc}] ` : '';
     const note = exact ? 'tam boyut' : (RESIZE ? `→ ${target.w}×${target.h} yeniden ölçekleniyor` : `⚠ boyut ${target.w}×${target.h} DEĞİL (--resize ile düzelt)`);
-    console.log(`• ${f} (${meta.width}×${meta.height}) → ${path.relative(PROJECT, dest)}  [${note}]`);
-    placed[target.key].push(dest);
+    console.log(`• ${locTag}${f} (${meta.width}×${meta.height}) → ${path.relative(PROJECT, dest)}  [${note}]`);
+    placed.push({ key: target.key, dest, iosLocale, androidLocale, loc });
 
     if (DRY) continue;
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -166,27 +194,45 @@ async function main() {
   }
 
   // ---------- özet ----------
+  const byKey = (k) => placed.filter((p) => p.key === k);
   console.log('\n─── Özet ───');
   for (const t of TARGETS) {
-    const arr = placed[t.key];
-    if (arr.length) console.log(`  ${t.key.padEnd(9)} ${arr.length} dosya`);
+    const arr = byKey(t.key);
+    if (!arr.length) continue;
+    const locs = [...new Set(arr.map((p) => p.loc || IOS_LOCALE))].join(', ');
+    console.log(`  ${t.key.padEnd(9)} ${arr.length} dosya  (${locs})`);
   }
   if (skipped.length) {
     console.log('\n⚠ Atlananlar (boyut eşleşmedi):');
     skipped.forEach((s) => console.log('   - ' + s));
   }
 
-  // ---------- zorunluluk uyarıları ----------
+  // ---------- zorunluluk + limit denetimi (dile göre) ----------
   const warn = [];
-  if (!placed.iphone67.length) warn.push('iOS iPhone 6.9" (1290×2796) YOK — App Store için en az 1 zorunlu.');
-  if (placed.android.length && placed.android.length < 2) warn.push('Android telefon görseli 1 tane — Play en az 2 ister.');
-  if (placed.android.length && !placed.feature.length) warn.push('Android feature graphic (1024×500) YOK — Play zorunlu.');
+  const hardErrors = [];
+  if (!byKey('iphone67').length) warn.push('iOS iPhone 6.9" (1290×2796) YOK — App Store için en az 1 zorunlu.');
+
+  // Android telefon görsellerini DİLE göre grupla: Play dil başına 2–8 görsel ister.
+  const andByLocale = {};
+  byKey('android').forEach((p) => { (andByLocale[p.androidLocale] ||= []).push(p); });
+  const featureLocales = new Set(byKey('feature').map((p) => p.androidLocale));
+  for (const [aloc, arr] of Object.entries(andByLocale)) {
+    if (arr.length < 2) warn.push(`Android '${aloc}' dilinde ${arr.length} telefon görseli — Play en az 2 ister.`);
+    if (arr.length > 8) hardErrors.push(`Android '${aloc}' dilinde ${arr.length} telefon görseli — Play EN FAZLA 8 kabul eder.`);
+    if (!featureLocales.has(aloc)) warn.push(`Android '${aloc}' feature graphic (1024×500) YOK — Play zorunlu.`);
+  }
+
   if (warn.length) { console.log('\n⚠ Eksikler:'); warn.forEach((w) => console.log('   - ' + w)); }
+  if (hardErrors.length) {
+    console.log('\n❌ Play limiti aşıldı (yükleme reddedilir — dosyaları dile ayır):');
+    hardErrors.forEach((e) => console.log('   - ' + e));
+    process.exitCode = 1; // yerel çalıştırmada CI'dan ÖNCE fark edilsin
+  }
 
   // ---------- store.config.json yaması ----------
   if (args['patch-config'] && !DRY) patchConfig(placed);
 
-  console.log('\nBitti.' + (DRY ? ' (dry-run — dosya yazılmadı)' : ''));
+  console.log('\nBitti.' + (DRY ? ' (dry-run — dosya yazılmadı)' : '') + (hardErrors.length ? '  ⚠ Play limiti hatası var (exit 1)' : ''));
 }
 
 function patchConfig(placed) {
@@ -195,15 +241,25 @@ function patchConfig(placed) {
   const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   cfg.apple = cfg.apple || {};
   cfg.apple.info = cfg.apple.info || {};
-  const info = cfg.apple.info[IOS_LOCALE] = cfg.apple.info[IOS_LOCALE] || {};
   const rel = (p) => './' + path.relative(PROJECT, p).split(path.sep).join('/');
-  const map = {};
-  if (placed.iphone67.length) map.APP_IPHONE_67 = placed.iphone67.map(rel);
-  if (placed.ipad13.length) map.APP_IPAD_PRO_3GEN_129 = placed.ipad13.map(rel);
-  if (Object.keys(map).length) {
-    info.screenshots = map;
+
+  // iOS görsellerini iOS locale'ine göre grupla → her dilin kendi haritası güncellenir.
+  const iosLocales = [...new Set(
+    placed.filter((p) => p.key === 'iphone67' || p.key === 'ipad13').map((p) => p.iosLocale)
+  )];
+  let touched = 0;
+  for (const loc of iosLocales) {
+    const info = cfg.apple.info[loc] = cfg.apple.info[loc] || {};
+    const map = {};
+    const ip = placed.filter((p) => p.key === 'iphone67' && p.iosLocale === loc).map((p) => rel(p.dest));
+    const id = placed.filter((p) => p.key === 'ipad13' && p.iosLocale === loc).map((p) => rel(p.dest));
+    if (ip.length) map.APP_IPHONE_67 = ip;
+    if (id.length) map.APP_IPAD_PRO_3GEN_129 = id;
+    if (Object.keys(map).length) { info.screenshots = map; touched++; }
+  }
+  if (touched) {
     fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n');
-    console.log(`\n✓ store.config.json → apple.info.${IOS_LOCALE}.screenshots güncellendi.`);
+    console.log(`\n✓ store.config.json → ${iosLocales.join(', ')} için apple.info.<loc>.screenshots güncellendi.`);
   }
 }
 

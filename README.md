@@ -115,9 +115,35 @@ kopyalanırken [Adım 0](#adım-0--placeholder--kimlik-bilgileri-referansı) de�
 
 ## Kurulum
 
-Her PC'de **bir kez** çalıştır:
+### A) `npx skills add` ile (önerilen — repo public)
+
+Depoyu klonlamaya gerek yok; [`vercel-labs/skills`](https://github.com/vercel-labs/skills)
+CLI'ı skill'leri doğrudan GitHub'dan çeker:
 
 ```bash
+# Tüm skill'leri global kur (~/.claude/skills/) — her projede görünür
+npx skills add wappadev/skills -g
+
+# Sadece bulunduğun projeye kur (.claude/skills/)
+npx skills add wappadev/skills
+
+# Tek bir skill seç
+npx skills add wappadev/skills -s wappa-auth
+
+# Listele / güncelle
+npx skills list
+npx skills update
+```
+
+Kurulumdan sonra **Claude Code'u yeniden başlat** ki skill'leri görsün.
+
+### B) `install.sh` ile (repoyu klonlayıp symlink)
+
+Depoyu geliştirecek/düzenleyeceksen bu yolu kullan; symlink olduğu için değişiklikler
+anında yansır. Her PC'de **bir kez** çalıştır:
+
+```bash
+git clone https://github.com/wappadev/skills.git wappa-app-skills
 cd wappa-app-skills
 ./install.sh
 ```

@@ -1,0 +1,21 @@
+node_modules
+.expo/
+dist/
+web-build/
+*.log
+.DS_Store
+
+# TypeScript
+expo-env.d.ts
+*.tsbuildinfo
+
+# Ortam değişkenleri ve Firebase gizli yapılandırması
+.env
+.env.local
+# /google-services.json
+# /GoogleService-Info.plist
+
+# Yalnızca kök dizindeki native klasörleri yok say (fastlane/metadata/android'i DEĞİL).
+/ios
+/android
+.DS_Store

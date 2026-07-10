@@ -1,0 +1,15 @@
+Efsane Yolu, klasik 2048 bulmacasının bugüne kadarki en zengin sürümü. Sayıları kaydırıp birleştir, 2048'e ulaş ve çaylaktan efsaneye yüksel!
+
+Neden Efsane Yolu?
+• 5 OYUN MODU – Klasik, Süreli (2 dk), Hamle Limitli, Sonsuz ve kilitli kutuların yer değiştirdiği Engel modu.
+• ÖZEL TAŞLAR – ×2 skoru katlar, bomba etrafını temizler, kilitli taş 3 hamlede açılır, joker her sayıyla birleşir.
+• 5 GÜÇ (POWER-UP) – Geri al, sil, yer değiştir, karıştır ve hücre aç ile en zor anlardan kurtul.
+• 4 TEMA – Klasik, göz alıcı Neon, göz dostu Karanlık ve yumuşak Pastel.
+• RPG MODU – Sayılar yerine karakter rütbeleri: Çaylak, Şövalye, Büyücü, Kral… ta ki Efsane olana dek!
+• BAŞARIMLAR & SKOR TABLOSU – Onlarca açılabilir başarım ve skor tablosuyla kendine hedefler koy.
+• TAMAMEN TÜRKÇE – Sade, akıcı ve hızlı arayüz.
+
+Nasıl oynanır?
+Parmağınla yukarı, aşağı, sola veya sağa kaydır. Aynı sayıya sahip iki taş birleşir. Tahta dolmadan en yüksek skora ulaş!
+
+Zekanı test et, refleksini geliştir ve 2048'in ötesine geç. İyi eğlenceler!

@@ -1,0 +1,111 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "version": "1.0",
+    "copyright": "{{COPYRIGHT}}",
+    "release": {
+      "automaticRelease": true
+    },
+    "info": {
+      "en-US": {
+        "description": "{{APP_STORE_DESCRIPTION}}",
+        "keywords": [
+          "{{APP_STORE_KEYWORDS}}"
+        ],
+        "marketingUrl": "{{MARKETING_URL}}",
+        "promoText": "{{APP_STORE_PROMO}}",
+        "supportUrl": "{{SUPPORT_URL}}",
+        "title": "{{APP_STORE_TITLE}}",
+        "subtitle": "{{APP_STORE_SUBTITLE}}",
+        "privacyPolicyUrl": "{{PRIVACY_URL}}",
+        "screenshots": {
+          "APP_IPHONE_67": [
+            "store/apple/screenshot/en-US/APP_IPHONE_67/01-hero-iphone-6-9inc.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/02-modes-iphone-6-9inc.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/03-neon-iphone-6-9inc.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/04-rpg-iphone-6-9inc.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/05-obstacles-iphone-6-9inc.png",
+            "store/apple/screenshot/en-US/APP_IPHONE_67/06-leaderboard-iphone-6-9inc.png"
+          ],
+          "APP_IPAD_PRO_3GEN_129": [
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/01-hero-ipad-13inc.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/02-modes-ipad-13inc.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/03-neon-ipad-13inc.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/04-rpg-ipad-13inc.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/05-obstacles-ipad-13inc.png",
+            "store/apple/screenshot/en-US/APP_IPAD_PRO_3GEN_129/06-leaderboard-ipad-13inc.png"
+          ]
+        }
+      },
+      "tr": {
+        "description": "Efsane Yolu, klasik 2048 bulmacasının bugüne kadarki en zengin sürümü. Sayıları kaydırıp birleştir, 2048'e ulaş ve çaylaktan efsaneye yüksel!\n\nNeden Efsane Yolu?\n• 5 OYUN MODU – Klasik, Süreli (2 dk), Hamle Limitli, Sonsuz ve kilitli kutuların yer değiştirdiği Engel modu.\n• ÖZEL TAŞLAR – ×2 skoru katlar, bomba etrafını temizler, kilitli taş 3 hamlede açılır, joker her sayıyla birleşir.\n• 5 GÜÇ (POWER-UP) – Geri al, sil, yer değiştir, karıştır ve hücre aç ile en zor anlardan kurtul.\n• 4 TEMA – Klasik, göz alıcı Neon, göz dostu Karanlık ve yumuşak Pastel.\n• RPG MODU – Sayılar yerine karakter rütbeleri: Çaylak, Şövalye, Büyücü, Kral… ta ki Efsane olana dek!\n• BAŞARIMLAR & SKOR TABLOSU – Onlarca açılabilir başarım ve skor tablosuyla kendine hedefler koy.\n• TAMAMEN TÜRKÇE – Sade, akıcı ve hızlı arayüz.\n\nNasıl oynanır?\nParmağınla yukarı, aşağı, sola veya sağa kaydır. Aynı sayıya sahip iki taş birleşir. Tahta dolmadan en yüksek skora ulaş!\n\nZekanı test et, refleksini geliştir ve 2048'in ötesine geç. İyi eğlenceler!",
+        "keywords": [
+          "sayı",
+          "puzzle",
+          "bulmaca",
+          "merge",
+          "birleştir",
+          "beyin",
+          "zeka",
+          "rakam",
+          "karo",
+          "oyunu",
+          "offline",
+          "bloklar",
+          "taş",
+          "mantık"
+        ],
+        "marketingUrl": "{{MARKETING_URL}}",
+        "promoText": "Klasik 2048'in en zengin sürümü: 5 mod, 4 tema, RPG rütbeleri, özel taşlar ve güçler. Tamamen Türkçe. Çaylaktan Efsane'ye yüksel!",
+        "supportUrl": "{{SUPPORT_URL}}",
+        "title": "2048 Efsane Yolu",
+        "subtitle": "Modlar, Neon Temalar & RPG",
+        "privacyPolicyUrl": "{{PRIVACY_URL}}"
+      }
+    },
+    "categories": [
+      [
+        "GAMES",
+        "GAMES_PUZZLE",
+        "GAMES_STRATEGY"
+      ],
+      "ENTERTAINMENT"
+    ],
+    "advisory": {
+      "ageRatingOverride": "NONE",
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "kidsAgeBand": null,
+      "koreaAgeRatingOverride": "NONE",
+      "lootBox": false,
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "unrestrictedWebAccess": false,
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "advertising": true,
+      "ageAssurance": false,
+      "ageRatingOverrideV2": "NONE",
+      "developerAgeRatingInfoUrl": null,
+      "gunsOrOtherWeapons": "NONE",
+      "healthOrWellnessTopics": false,
+      "messagingAndChat": false,
+      "parentalControls": false,
+      "userGeneratedContent": false
+    },
+    "review": {
+      "firstName": "",
+      "lastName": "",
+      "email": "",
+      "phone": "",
+      "demoRequired": false
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "{{SITE_KEY}}": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@appaflytech/wappa-mcp@latest"
+      ],
+      "env": {
+        "WAP_ADMIN_API_URL": "{{WAPPA_ADMIN_API_URL}}",
+        "WAP_SITE_KEY": "{{SITE_KEY}}",
+        "WAP_EMAIL": "{{WAP_EMAIL}}",
+        "WAP_PASSWORD": "{{WAP_PASSWORD}}",
+        "WAP_LANGUAGE": "en-us",
+        "WAPPA_PROJECT_ROOT": "."
+      }
+    }
+  }
+}

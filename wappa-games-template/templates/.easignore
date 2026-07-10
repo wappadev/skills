@@ -1,0 +1,32 @@
+# EAS build arşivine dahil edilmeyecek dosyalar. NOT: .easignore varsa EAS
+# .gitignore'u DİKKATE ALMAZ — bu yüzden .gitignore'daki her şeyi burada da
+# tekrarlamak gerekir (aksi halde ios/android/node_modules gibi devasa klasörler
+# arşive girer). Build'in ürettiği native klasörler prebuild'de yeniden yaratılır.
+
+# --- .gitignore'dan devralınanlar (build arşivinde de gerekmez) ---
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+*.tsbuildinfo
+expo-env.d.ts
+.env
+.env.local
+.DS_Store
+/ios
+/android
+
+# --- Mağaza listeleme varlıkları: yalnızca metadata/submit CI job'larında (git
+# checkout üzerinden) kullanılır, uygulama derlemesi için gereksiz. ---
+fastlane/
+store/
+
+# --- Geliştirici/CI yardımcı dosyaları: derlemeye girmez ---
+.git/
+.gitlab-ci.yml
+.claude/
+docs/
+scripts/
+.env.example
+.mcp.json

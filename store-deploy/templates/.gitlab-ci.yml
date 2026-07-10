@@ -1,0 +1,158 @@
+# {{APP_NAME}} — GitLab CI/CD (EAS local build, self-hosted macOS runner)
+# Yalnızca git TAG push'unda çalışır. Sürüm çıkarmak = yeni tag atmak (vX.Y.Z).
+# Gerekli CI/CD değişkenleri (Settings → CI/CD → Variables, "Masked"+"Protected"):
+#   EXPO_TOKEN               → EAS erişim token'ı (expo.dev → Account → Access tokens)
+#   ASC_KEY_BASE64           → App Store Connect .p8 anahtarı, base64 (submit/metadata için)
+#   ASC_KEY_ID               → ASC API Key ID (10 karakter)
+#   ASC_ISSUER_ID            → ASC API Issuer ID (UUID)
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON→ Google Play service account JSON (Android submit için; base64 ya da düz JSON olabilir)
+# NOT: bundle numarası eas.json `appVersionSource=remote` + `autoIncrement` ile otomatik artar.
+
+stages:
+  - build
+  - submit
+  - metadata
+
+# Sadece tag'de pipeline oluştur
+workflow:
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+default:
+  tags: [macos]              # ← kendi macOS runner tag'inle değiştir
+  before_script:
+    # Bozuk jenv shim'ini bypass et: Gradle için gerçek JDK 17'yi sabitle
+    - export JAVA_HOME="$(/usr/libexec/java_home -v 17)"
+    - export PATH="$JAVA_HOME/bin:$PATH"
+    # bun profil dışı shell'de PATH'te olmayabilir → kurulu olduğu dizini garantiye al
+    - export PATH="$HOME/.bun/bin:$PATH"
+    - node --version && bun --version && java -version
+    # Başarısız build'lerden kalan EAS temp klasörünü temizle (disk dolmasını önler)
+    - rm -rf /var/folders/*/*/T/eas-build-local-nodejs 2>/dev/null || true
+    # Bağımlılıklar bun.lock ile kurulur (repoda bun.lock var, package-lock.json yok).
+    # --frozen-lockfile: lock ile package.json senkron değilse hata ver (npm ci muadili).
+    - bun install --frozen-lockfile
+
+# ---------- BUILD ----------
+build_ios:
+  stage: build
+  resource_group: macos_runner   # iOS+Android aynı runner'ı paylaşır → sıraya sok
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  script:
+    # iOS imza fix: login keychain'deki stale dağıtım sertifikalarını sil (EAS kendi
+    # sertifikasını geçici keychain'e getirir; xcodebuild yanlışını seçmesin).
+    - |
+      LOGIN_KC="$HOME/Library/Keychains/login.keychain-db"
+      HASHES="$(security find-certificate -a -c "Distribution" -Z "$LOGIN_KC" 2>/dev/null | grep -oE '[0-9A-F]{40}' || true)"
+      if [ -n "$HASHES" ]; then
+        for H in $HASHES; do security delete-certificate -Z "$H" "$LOGIN_KC" >/dev/null 2>&1 && echo "🗑️  $H"; done
+      else
+        echo "ℹ️  Temizlenecek dağıtım sertifikası yok"
+      fi
+    - npx eas-cli build --platform ios --profile production --local  --output "$CI_PROJECT_DIR/build-ios.ipa"
+  artifacts:
+    paths: [build-ios.ipa]
+    expire_in: 1 week
+
+build_android:
+  stage: build
+  resource_group: macos_runner
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - npx eas-cli build --platform android --profile production --local  --output "$CI_PROJECT_DIR/build-android.aab"
+  artifacts:
+    paths: [build-android.aab]
+    expire_in: 1 week
+
+# ---------- SUBMIT (manuel) ----------
+submit_ios:
+  stage: submit
+  resource_group: macos_runner
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: manual
+  needs: [build_ios]
+  script:
+    - mkdir -p private
+    # .p8 gizli anahtarı CI değişkeninden aç; eas.json'daki ascApiKeyPath bunu okur.
+    - echo "$ASC_KEY_BASE64" | base64 --decode > private/asc-api-key.p8
+    # ASC anahtar yolu + Key/Issuer ID'yi eas.json'a runtime'da enjekte et. eas-cli bu
+    # alanları SADECE eas.json submit profilinden okur (EXPO_ASC_* env desteklenmiyor).
+    - node -e "const fs=require('fs'),p='eas.json',j=JSON.parse(fs.readFileSync(p)),i=j.submit.production.ios;i.ascApiKeyPath='./private/asc-api-key.p8';i.ascApiKeyId=process.env.ASC_KEY_ID;i.ascApiKeyIssuerId=process.env.ASC_ISSUER_ID;fs.writeFileSync(p,JSON.stringify(j,null,2))"
+    - npx eas-cli submit --platform ios --profile production --path "$CI_PROJECT_DIR/build-ios.ipa" --non-interactive
+
+submit_android:
+  stage: submit
+  resource_group: macos_runner
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: manual
+  needs: [build_android]
+  script:
+    - mkdir -p private
+    # service account JSON'u aç ve eas.json'a runtime'da enjekte et (eas-cli bu alanı
+    # SADECE eas.json submit profilinden okur; repoda tutulmuyor).
+    # Değişken base64 kodlanmışsa çöz, düz JSON ise olduğu gibi yaz (ilk karakter '{' testi).
+    - |
+      if [ "$(printf %.1s "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")" = "{" ]; then
+        printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > private/play-service-account.json
+      else
+        printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 --decode > private/play-service-account.json
+      fi
+    - node -e "const fs=require('fs'),p='eas.json',j=JSON.parse(fs.readFileSync(p));j.submit.production.android={serviceAccountKeyPath:'./private/play-service-account.json',track:'internal'};fs.writeFileSync(p,JSON.stringify(j,null,2))"
+    - npx eas-cli submit --platform android --profile production --path "$CI_PROJECT_DIR/build-android.aab" --non-interactive
+
+# ---------- METADATA (manuel, build'ten bağımsız) ----------
+# App Store listeleme metnini (store.config.json) günceller. EAS Metadata yalnızca Apple.
+metadata_ios:
+  stage: metadata
+  resource_group: macos_runner
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: manual
+  needs: []
+  script:
+    - mkdir -p private
+    # ASC kimliği eas.json submit profilinden okunur; .p8 aç + yol/Key/Issuer ID enjekte et.
+    - echo "$ASC_KEY_BASE64" | base64 --decode > private/asc-api-key.p8
+    - node -e "const fs=require('fs'),p='eas.json',j=JSON.parse(fs.readFileSync(p)),i=j.submit.production.ios;i.ascApiKeyPath='./private/asc-api-key.p8';i.ascApiKeyId=process.env.ASC_KEY_ID;i.ascApiKeyIssuerId=process.env.ASC_ISSUER_ID;fs.writeFileSync(p,JSON.stringify(j,null,2))"
+    - npx eas-cli metadata:push --profile production --non-interactive
+
+# Play Store listeleme metnini (fastlane/metadata/android/**) günceller. EAS Metadata Play'i
+# desteklemediği için fastlane supply kullanılır. Metinler store.config.json'dan türetildi.
+# ÖN KOŞUL: Uygulama Play Console'da ELLE oluşturulmuş ve en az bir build yüklenmiş olmalı
+# (API app yaratamaz). İlk yayında sıra: Console'da app oluştur → submit_android → metadata_android.
+metadata_android:
+  stage: metadata
+  resource_group: macos_runner
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: manual
+  needs: []
+  script:
+    - mkdir -p private
+    # Değişken base64 kodlanmışsa çöz, düz JSON ise olduğu gibi yaz (ilk karakter '{' testi).
+    - |
+      if [ "$(printf %.1s "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")" = "{" ]; then
+        printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > private/play-service-account.json
+      else
+        printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 --decode > private/play-service-account.json
+      fi
+    # fastlane yoksa kur (runner'da genelde kuruludur; yoksa best-effort gem install).
+    - command -v fastlane >/dev/null 2>&1 || gem install --no-document fastlane
+    # Mağaza listelemesini gönder: metin (title/short/full) + görseller (icon, feature
+    # graphic) + ekran görüntüleri (telefon/7"/10"). Build ve changelog atlanır.
+    # Görseller fastlane/metadata/android/<locale>/images/ altından okunur.
+    - |
+      fastlane supply \
+        --json_key private/play-service-account.json \
+        --package_name {{BUNDLE_ID}} \
+        --track internal \
+        --metadata_path fastlane/metadata/android \
+        --skip_upload_apk true \
+        --skip_upload_aab true \
+        --skip_upload_changelogs true \
+        --skip_upload_images false \
+        --skip_upload_screenshots false

@@ -21,8 +21,10 @@
  * ---- config şeması (screenshots.config.js) ----
  * module.exports = {
  *   appName: "Sweet Pop",
- *   // her locale'de üretilecek cihaz boyutları (slayt bazında da ezilebilir):
- *   devices: ["iphone67", "android", "feature"],
+ *   icon: "./assets/icon-512.png",   // Play 512×512 mağaza ikonu kaynağı (opsiyonel; yoksa assets/ otomatik)
+ *   // her locale'de üretilecek çıktılar (slayt bazında da ezilebilir):
+ *   //   iphone67, ipad13 (iOS) · android (telefon) · android7/android10 (Play tablet) · feature · icon
+ *   devices: ["iphone67", "ipad13", "android", "android7", "android10", "feature", "icon"],
  *   locales: {
  *     tr: {
  *       textColor: "#ffffff",
@@ -83,11 +85,14 @@ function loadSharp() {
 const sharp = loadSharp();
 
 // ---- cihaz boyutları ----
+// android7 / android10 = Google Play 7" ve 10" tablet görselleri (portre).
 const DEVICES = {
-  iphone67: { w: 1290, h: 2796, kind: 'portrait' },
-  ipad13:   { w: 2064, h: 2752, kind: 'portrait' },
-  android:  { w: 1080, h: 1920, kind: 'portrait' },
-  feature:  { w: 1024, h: 500,  kind: 'feature' },
+  iphone67:  { w: 1290, h: 2796, kind: 'portrait' },
+  ipad13:    { w: 2064, h: 2752, kind: 'portrait' },
+  android:   { w: 1080, h: 1920, kind: 'portrait' },
+  android7:  { w: 1200, h: 1920, kind: 'portrait' },
+  android10: { w: 1600, h: 2560, kind: 'portrait' },
+  feature:   { w: 1024, h: 500,  kind: 'feature' },
 };
 
 // ---- config yükle ----
@@ -98,6 +103,15 @@ if (!fs.existsSync(configPath)) { console.error(`Hata: config bulunamadı: ${con
 const config = require(configPath);
 const onlyLocale = args.only && args.only !== true ? args.only : null;
 const devFilter = args.devices && args.devices !== true ? String(args.devices).split(',').map((s) => s.trim()) : null;
+
+// Play ikon kaynağını bul: config.icon (config'e göreli) → yoksa proje assets'inde otomatik.
+function resolveIconSource() {
+  const base = path.dirname(configPath);
+  const cand = [];
+  if (config.icon && config.icon !== true) cand.push(path.resolve(base, config.icon));
+  cand.push(path.join(base, 'assets', 'icon-512.png'), path.join(base, 'assets', 'icon.png'));
+  return cand.find((p) => fs.existsSync(p)) || null;
+}
 
 // ---- yardımcılar ----
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -230,7 +244,8 @@ async function main() {
       const rawFull = path.join(RAW, slide.raw);
       if (!fs.existsSync(rawFull)) { console.error(`  ⚠ ${locName}: ham kare yok, atlandı → ${slide.raw}`); continue; }
       let devs = slide.devices || loc.devices || config.devices || ['iphone67'];
-      devs = devs.filter((d) => d !== 'feature' && (!devFilter || devFilter.includes(d)));
+      // feature ve icon slayt-başına değil, aşağıda locale-başına bir kez üretilir.
+      devs = devs.filter((d) => d !== 'feature' && d !== 'icon' && (!devFilter || devFilter.includes(d)));
       for (const dName of devs) {
         const dev = DEVICES[dName];
         if (!dev) { console.error(`  ⚠ bilinmeyen cihaz: ${dName}`); continue; }
@@ -241,13 +256,28 @@ async function main() {
         count++;
       }
     }
-    // feature graphic
+    // feature graphic (locale'e göre metin/arka plan → İngilizce ve Türkçe FARKLI olur)
     const wantFeature = (loc.devices || config.devices || []).includes('feature') && (!devFilter || devFilter.includes('feature'));
     if (wantFeature) {
       const outFile = path.join(OUT, `${locName}_feature.png`);
       await buildFeature(DEVICES.feature, loc.feature, loc, config.appName, outFile);
       console.log(`  ✓ ${path.basename(outFile)}  (1024×500 feature)`);
       count++;
+    }
+
+    // Play mağaza ikonu (512×512) — uygulamanın ikonu (locale'den bağımsız, her dile aynı).
+    // Kaynak: config.icon (config dosyasına göreli) ya da otomatik: assets/icon-512.png|icon.png.
+    const wantIcon = (loc.devices || config.devices || []).includes('icon') && (!devFilter || devFilter.includes('icon'));
+    if (wantIcon) {
+      const iconSrc = resolveIconSource();
+      if (!iconSrc) {
+        console.error('  ⚠ icon istendi ama kaynak yok (config.icon ya da assets/icon-512.png/icon.png).');
+      } else {
+        const outFile = path.join(OUT, `${locName}_icon.png`);
+        await sharp(iconSrc).resize(512, 512, { fit: 'cover' }).png().toFile(outFile);
+        console.log(`  ✓ ${path.basename(outFile)}  (512×512 icon)`);
+        count++;
+      }
     }
   }
 

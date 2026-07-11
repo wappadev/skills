@@ -102,27 +102,33 @@ const sharp = loadSharp();
 
 // ---------- hedef tanımları ----------
 // Hedef klasörler locale-parametrik: aynı export içindeki farklı diller doğru klasöre gider.
-const DEVICE_KEYS = ['iphone67', 'ipad13', 'android', 'feature', 'icon'];
+// android7 / android10 → Play 7" ve 10" tablet klasörleri; icon → 512×512 mağaza ikonu.
 const iosDir = (ios, sub) => path.join(PROJECT, 'store', 'apple', 'screenshot', ios, sub);
 const andImg = (and) => path.join(PROJECT, 'fastlane', 'metadata', 'android', and, 'images');
 
 const TARGETS = [
-  { key: 'iphone67', w: 1290, h: 2796, kind: 'ios-set',  dir: (ios) => iosDir(ios, 'APP_IPHONE_67') },
-  { key: 'ipad13',   w: 2064, h: 2752, kind: 'ios-set',  dir: (ios) => iosDir(ios, 'APP_IPAD_PRO_3GEN_129') },
-  { key: 'android',  w: 1080, h: 1920, kind: 'and-set',  dir: (ios, and) => path.join(andImg(and), 'phoneScreenshots') },
-  { key: 'feature',  w: 1024, h: 500,  kind: 'and-file', file: (ios, and) => path.join(andImg(and), 'featureGraphic.png') },
-  { key: 'icon',     w: 512,  h: 512,  kind: 'and-file', file: (ios, and) => path.join(andImg(and), 'icon.png') },
+  { key: 'iphone67',  token: 'iphone67',  w: 1290, h: 2796, kind: 'ios-set',  dir: (ios) => iosDir(ios, 'APP_IPHONE_67') },
+  { key: 'ipad13',    token: 'ipad13',    w: 2064, h: 2752, kind: 'ios-set',  dir: (ios) => iosDir(ios, 'APP_IPAD_PRO_3GEN_129') },
+  { key: 'android',   token: 'android',   w: 1080, h: 1920, kind: 'and-set',  dir: (ios, and) => path.join(andImg(and), 'phoneScreenshots') },
+  { key: 'android7',  token: 'android7',  w: 1200, h: 1920, kind: 'and-set',  dir: (ios, and) => path.join(andImg(and), 'sevenInchScreenshots') },
+  { key: 'android10', token: 'android10', w: 1600, h: 2560, kind: 'and-set',  dir: (ios, and) => path.join(andImg(and), 'tenInchScreenshots') },
+  { key: 'feature',   token: 'feature',   w: 1024, h: 500,  kind: 'and-file', file: (ios, and) => path.join(andImg(and), 'featureGraphic.png') },
+  { key: 'icon',      token: 'icon',      w: 512,  h: 512,  kind: 'and-file', file: (ios, and) => path.join(andImg(and), 'icon.png') },
 ];
+const BY_TOKEN = Object.fromEntries(TARGETS.map((t) => [t.token, t]));
+const DEVICE_KEYS = TARGETS.map((t) => t.token);
 
-// build-screenshots.js çıktısı locale'i dosya adına gömer:
-//   "<loc>_<device>_<nn>.png"  ve  "<loc>_feature.png"   (ör. en-US_android_01.png)
-// İlk cihaz belirtecinden ÖNCEki kısım locale'dir; böylece ÇOK DİLLİ export'ta her kare
-// DOĞRU dile yönlendirilir. (Aksi halde hepsi tek klasöre yığılır → Play "8 görselden fazla"
-// hatası.) Locale saptanamazsa (önekisiz eski editör export'u) --locale bayrağına düşülür.
-function detectLocale(filename) {
+// build-screenshots.js çıktısı locale + cihazı dosya adına gömer:
+//   "<loc>_<device>_<nn>.png"  ve  "<loc>_feature.png" / "<loc>_icon.png"  (ör. en-US_android7_01.png)
+// Hedefi CİHAZ belirtecinden saptarız (boyut/en-boy tahminine göre değil) — böylece 7" ve 10"
+// tabletler aynı en-boy oranına sahip olsa bile karışmaz. Belirteçten ÖNCEki kısım locale'dir;
+// çok dilli export'ta her kare DOĞRU dile gider. Belirteç yoksa (önekisiz eski editör export'u)
+// --locale + en-boy tahminine (matchTarget) düşülür.
+function detect(filename) {
   const parts = path.parse(filename).name.split('_');
-  const di = parts.findIndex((p) => DEVICE_KEYS.includes(p));
-  return di > 0 ? parts.slice(0, di).join('_') : null;
+  const di = parts.findIndex((p) => BY_TOKEN[p]);
+  if (di > 0) return { loc: parts.slice(0, di).join('_'), token: parts[di] };
+  return { loc: null, token: null };
 }
 
 // Bir görüntü boyutunu en yakın hedefe eşle (en-boy oranına göre, ±%3 tolerans).
@@ -155,14 +161,16 @@ async function main() {
   for (const f of files) {
     const src = path.join(FROM, f);
     const meta = await sharp(src).metadata();
-    const target = matchTarget(meta.width, meta.height);
+
+    // Dosya adından locale + cihazı sapta; cihaz belirteci varsa hedef ondan (kesin),
+    // yoksa en-boy tahminine düş (önekisiz eski export'lar için).
+    const { loc, token } = detect(f);
+    const target = token ? BY_TOKEN[token] : matchTarget(meta.width, meta.height);
     if (!target) {
       skipped.push(`${f} (${meta.width}×${meta.height}) — bilinen bir mağaza boyutuna uymuyor`);
       continue;
     }
 
-    // Dosya adından locale'i sapta; yoksa bayraklardan gelen varsayılana düş.
-    const loc = detectLocale(f);
     const iosLocale = loc || IOS_LOCALE;
     const androidLocale = loc ? (LOCALE_MAP[loc] || loc) : ANDROID_LOCALE;
 
@@ -212,15 +220,24 @@ async function main() {
   const hardErrors = [];
   if (!byKey('iphone67').length) warn.push('iOS iPhone 6.9" (1290×2796) YOK — App Store için en az 1 zorunlu.');
 
-  // Android telefon görsellerini DİLE göre grupla: Play dil başına 2–8 görsel ister.
-  const andByLocale = {};
-  byKey('android').forEach((p) => { (andByLocale[p.androidLocale] ||= []).push(p); });
+  // Her Android görsel tipi (telefon/7"/10") Play'de dil başına EN FAZLA 8 kabul eder.
+  const SET_LABEL = { android: 'telefon', android7: '7" tablet', android10: '10" tablet' };
+  for (const key of ['android', 'android7', 'android10']) {
+    const byLoc = {};
+    byKey(key).forEach((p) => { (byLoc[p.androidLocale] ||= []).push(p); });
+    for (const [aloc, arr] of Object.entries(byLoc)) {
+      if (arr.length > 8) hardErrors.push(`Android '${aloc}' — ${arr.length} ${SET_LABEL[key]} görseli, Play EN FAZLA 8 kabul eder.`);
+    }
+  }
+  // Telefon görselleri (zorunlu) + feature graphic dile göre kontrol.
+  const phoneByLocale = {};
+  byKey('android').forEach((p) => { (phoneByLocale[p.androidLocale] ||= []).push(p); });
   const featureLocales = new Set(byKey('feature').map((p) => p.androidLocale));
-  for (const [aloc, arr] of Object.entries(andByLocale)) {
+  for (const [aloc, arr] of Object.entries(phoneByLocale)) {
     if (arr.length < 2) warn.push(`Android '${aloc}' dilinde ${arr.length} telefon görseli — Play en az 2 ister.`);
-    if (arr.length > 8) hardErrors.push(`Android '${aloc}' dilinde ${arr.length} telefon görseli — Play EN FAZLA 8 kabul eder.`);
     if (!featureLocales.has(aloc)) warn.push(`Android '${aloc}' feature graphic (1024×500) YOK — Play zorunlu.`);
   }
+  if (byKey('android').length && !byKey('icon').length) warn.push('Android mağaza ikonu (512×512) YOK — listelemede ikon görünmez.');
 
   if (warn.length) { console.log('\n⚠ Eksikler:'); warn.forEach((w) => console.log('   - ' + w)); }
   if (hardErrors.length) {

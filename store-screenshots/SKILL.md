@@ -137,12 +137,19 @@ node ~/.claude/skills/store-screenshots/templates/place-screenshots.js \
 |---|---|---|
 | **1290×2796** | iOS iPhone 6.9" (zorunlu) | `store/apple/screenshot/<iosLocale>/APP_IPHONE_67/NN.png` |
 | **2064×2752** | iOS iPad 13" (yalnızca `supportsTablet`) | `store/apple/screenshot/<iosLocale>/APP_IPAD_PRO_3GEN_129/NN.png` |
-| **1080×1920** | Android telefon (min 2, max 8) | `fastlane/metadata/android/<androidLocale>/images/phoneScreenshots/NN_*.png` |
-| **1024×500** | Android feature graphic (zorunlu) | `.../images/featureGraphic.png` |
-| **512×512** | Android ikon | `.../images/icon.png` |
+| **1080×1920** | Android telefon (min 2, max 8) | `fastlane/metadata/android/<androidLocale>/images/phoneScreenshots/NN.png` |
+| **1200×1920** | Android 7" tablet (`android7`, max 8) | `.../images/sevenInchScreenshots/NN.png` |
+| **1600×2560** | Android 10" tablet (`android10`, max 8) | `.../images/tenInchScreenshots/NN.png` |
+| **1024×500** | Android feature graphic (zorunlu, dile göre metin) | `.../images/featureGraphic.png` |
+| **512×512** | Android mağaza ikonu (app ikonu) | `.../images/icon.png` |
 
-- Eşleme **en-boy oranına** göre yapılır (±%3 tolerans); tam boyut değilse uyarır,
-  `--resize` verilirse hedefe `cover` ile ölçekler (oran korunur, kırpma olabilir).
+- Hedef **dosya adındaki cihaz belirtecinden** saptanır (`<loc>_<device>_NN.png`) — böylece 7"
+  ve 10" tablet aynı en-boy oranında olsa bile karışmaz. Belirteç yoksa en-boy oranına düşer
+  (±%3), `--resize` ile `cover` ölçekleme yapılır.
+- **Feature graphic dile göre üretilir** (metin + arka plan locale'den) → İngilizce ve Türkçe
+  FARKLI olur; kopyalama yapma, her dili config'ten üret.
+- **Mağaza ikonu** uygulamanın ikonudur (locale-bağımsız): build `config.icon` (yoksa
+  `assets/icon-512.png`/`icon.png`) kaynağını 512×512'ye ölçekler, her dile aynısını koyar.
 - Boyut tam tutarsa dosya **ham kopyalanır** (yeniden kodlama yok, kalite kaybı olmaz).
 - Sıra kaynak dosya adına göre (numerik) → editörde `01-`, `02-` diye adlandır.
 
@@ -165,7 +172,7 @@ Her dil için ayrı export + ayrı çalıştırma yap (görseldeki başlık metn
 | `--raw <dir>` | Ham kare klasörü (config'teki `raw` adları burada aranır). |
 | `--out <dir>` | Üretilen görsellerin klasörü (`place-screenshots.js --from` bunu alır). |
 | `--only <loc>` | Yalnızca bu locale'i üret. |
-| `--devices a,b` | Cihazları kısıtla (`iphone67,ipad13,android,feature`). |
+| `--devices a,b` | Cihazları kısıtla (`iphone67,ipad13,android,android7,android10,feature,icon`). |
 
 **`place-screenshots.js`** — görselleri store-assets ağacına yerleştir:
 
@@ -181,10 +188,11 @@ Her dil için ayrı export + ayrı çalıştırma yap (görseldeki başlık metn
 
 Önce daima `--dry-run` ile çalıştır, eşlemeyi doğrula, sonra gerçek yaz.
 
-**Config şeması** (`screenshots.config.js`): `appName`, `devices[]`, `locales.<loc>` →
-`textColor`, `background` (tek renk düz / iki renk gradyan), `slides[]` (`raw`, `title`,
-`subtitle`, opsiyonel `badge`, `devices[]`), `feature` (feature graphic başlığı). Tam örnek:
-`templates/screenshots.config.example.js`.
+**Config şeması** (`screenshots.config.js`): `appName`, `icon` (Play 512 ikon kaynağı,
+opsiyonel), `devices[]` (`iphone67,ipad13,android,android7,android10,feature,icon`),
+`locales.<loc>` → `textColor`, `background` (tek renk düz / iki renk gradyan), `slides[]`
+(`raw`, `title`, `subtitle`, opsiyonel `badge`, `devices[]`), `feature` (feature graphic
+başlığı — dile göre farklı yaz). Tam örnek: `templates/screenshots.config.example.js`.
 
 ## 6) Zorunluluk kontrolü (betik uyarır)
 

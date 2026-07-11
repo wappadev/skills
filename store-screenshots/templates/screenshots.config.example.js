@@ -14,11 +14,14 @@
 
 module.exports = {
   appName: 'Sweet Pop',
+  // Play 512×512 mağaza ikonu kaynağı (opsiyonel; yoksa assets/icon-512.png|icon.png otomatik).
+  icon: './assets/icon-512.png',
 
-  // Her locale'de varsayılan üretilecek cihazlar (slaytta `devices` ile ezilebilir):
+  // Her locale'de varsayılan üretilecek çıktılar (slaytta `devices` ile ezilebilir):
   //   iphone67 (1290×2796, zorunlu) · ipad13 (2064×2752, yalnız supportsTablet)
-  //   android  (1080×1920)          · feature (1024×500 Play feature graphic)
-  devices: ['iphone67', 'android', 'feature'],
+  //   android  (1080×1920 telefon)  · android7 (1200×1920, 7" tablet) · android10 (1600×2560, 10" tablet)
+  //   feature  (1024×500 Play feature graphic) · icon (512×512 Play mağaza ikonu)
+  devices: ['iphone67', 'ipad13', 'android', 'android7', 'android10', 'feature', 'icon'],
 
   locales: {
     tr: {

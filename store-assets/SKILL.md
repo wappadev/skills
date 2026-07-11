@@ -71,6 +71,18 @@ onaydan sonra otomatik yayın.
 
 **`categories`:** `[[ birincil, altkat1, altkat2 ], ikincil]` yapısı. Örnek oyun:
 `[["GAMES","GAMES_PUZZLE","GAMES_STRATEGY"], "ENTERTAINMENT"]`.
+Alt kategoriler **yalnızca** şu sabit listeden olmalı (uydurma değer — ör. `GAMES_ARCADE`
+— push'ta "must be one of…" hatası verir): `GAMES_SPORTS`, `GAMES_WORD`, `GAMES_MUSIC`,
+`GAMES_ADVENTURE`, `GAMES_ACTION`, `GAMES_ROLE_PLAYING`, `GAMES_CASUAL`, `GAMES_BOARD`,
+`GAMES_TRIVIA`, `GAMES_CARD`, `GAMES_PUZZLE`, `GAMES_CASINO`, `GAMES_STRATEGY`,
+`GAMES_SIMULATION`, `GAMES_RACING`, `GAMES_FAMILY`. (Match-3 için `GAMES_PUZZLE` +
+`GAMES_CASUAL` iyi seçim.)
+
+**`review` (App Review iletişimi) — OPSİYONEL:** Bu blok şablonda **yok**; App Review
+iletişimini App Store Connect'ten yönetmek en temizi. Bloğu eklemek istersen alanlar
+**boş string olamaz** (`""`) — `firstName`/`lastName` en az 1 karakter, `email` geçerli
+formatta olmalı; aksi halde push "must be 1 character or more / must be a valid email"
+hatası verir. Yani ya bloğu hiç koyma, ya da GERÇEK bilgiyle doldur — boş bırakma.
 
 **`advisory`:** yaş değerlendirmesi bayrakları. Çoğu alan `"NONE"`, bazıları boolean
 (`gambling`, `lootBox`, `unrestrictedWebAccess`, `advertising`, `userGeneratedContent`

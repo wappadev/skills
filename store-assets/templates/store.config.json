@@ -99,13 +99,6 @@
       "messagingAndChat": false,
       "parentalControls": false,
       "userGeneratedContent": false
-    },
-    "review": {
-      "firstName": "",
-      "lastName": "",
-      "email": "",
-      "phone": "",
-      "demoRequired": false
     }
   }
 }
